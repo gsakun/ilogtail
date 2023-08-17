@@ -1895,7 +1895,15 @@ LogFileReader::~LogFileReader() {
                  "last file position", mLastFilePos));
     CloseFilePtr();
 
-    if (mContainerStopped) {
+    string::size_type emptyDir = mHostLogPath.find("kubernetes.io~empty-dir");
+    string::size_type inner = mHostLogPath.find("io.containerd.snapshotter.v1.overlayfs");
+
+    bool ignore = false;
+    if (emptyDir != string::npos || inner != string::npos){
+        ignore = true;
+    }
+
+    if (mContainerStopped && !ignore) {
            LOG_INFO(sLogger,("container stop and container file still existd, add checkpoint to dockerfile checkpoint",mHostLogPath));
            CheckPoint* checkPointPtr = new CheckPoint(mHostLogPath,
                                                   mLastFilePos,
@@ -1909,7 +1917,7 @@ LogFileReader::~LogFileReader() {
            checkPointPtr->mLastUpdateTime = mLastEventTime;
            CheckPointManager::Instance()->AddDockerFileCheckPoint(checkPointPtr);
     }
-    if (mFileDeleted) {
+    if (mFileDeleted && !ignore) {
            LOG_INFO(sLogger,("file deleted, check if dockerfile checkpoint existed",mHostLogPath));
            CheckPointPtr checkPointSharePtr;
            if (CheckPointManager::Instance()->GetDockerFileCheckPoint(mDevInode, mConfigName, checkPointSharePtr)){
