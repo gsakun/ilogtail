@@ -144,33 +144,43 @@ void LogFileReader::InitReader(bool tailExisted, FileReadPolicy policy, uint32_t
         // hold on checkPoint share ptr, so this check point will not be delete in this block
         CheckPointPtr checkPointSharePtr;
         bool getCheckPoint = false;
-        if (checkPointManagerPtr->GetCheckPoint(mDevInode, mConfigName, checkPointSharePtr)) {
-            CheckPoint* checkPointPtr = checkPointSharePtr.get();
-            mLastFilePos = checkPointPtr->mOffset;
-            mLastReadPos = mLastFilePos;
-            mLastFileSignatureHash = checkPointPtr->mSignatureHash;
-            mLastFileSignatureSize = checkPointPtr->mSignatureSize;
-            mRealLogPath = checkPointPtr->mRealFileName;
-            mLastEventTime = checkPointPtr->mLastUpdateTime;
-            LOG_INFO(
-                sLogger,
-                ("recover log reader status from checkpoint, project", mProjectName)("logstore", mCategory)(
-                    "config", mConfigName)("log reader queue name", mHostLogPath)("file device", ToString(mDevInode.dev))(
-                    "file inode", ToString(mDevInode.inode))("file signature", mLastFileSignatureHash)(
-                    "real file path", mRealLogPath)("file size", mLastFileSize)("last file position", mLastFilePos));
-            // check if we should skip first modify
-            // file is open or last update time is new
-            if (checkPointPtr->mFileOpenFlag != 0
-                || (int32_t)time(NULL) - checkPointPtr->mLastUpdateTime < INT32_FLAG(skip_first_modify_time)) {
-                mSkipFirstModify = false;
-            } else {
-                mSkipFirstModify = true;
+        string::size_type emptydir = mHostLogPath.find("kubernetes.io~empty-dir");
+        string::size_type inner = mHostLogPath.find("io.containerd.snapshotter.v1.overlayfs");
+
+        bool ignore = false;
+        if (emptydir != string::npos || inner != string::npos){
+           ignore = true;
+        }
+
+        if (!ignore){
+            if (checkPointManagerPtr->GetCheckPoint(mDevInode, mConfigName, checkPointSharePtr)) {
+                CheckPoint* checkPointPtr = checkPointSharePtr.get();
+                mLastFilePos = checkPointPtr->mOffset;
+                mLastReadPos = mLastFilePos;
+                mLastFileSignatureHash = checkPointPtr->mSignatureHash;
+                mLastFileSignatureSize = checkPointPtr->mSignatureSize;
+                mRealLogPath = checkPointPtr->mRealFileName;
+                mLastEventTime = checkPointPtr->mLastUpdateTime;
+                LOG_INFO(
+                    sLogger,
+                    ("recover log reader status from checkpoint, project", mProjectName)("logstore", mCategory)(
+                        "config", mConfigName)("log reader queue name", mHostLogPath)("file device", ToString(mDevInode.dev))(
+                        "file inode", ToString(mDevInode.inode))("file signature", mLastFileSignatureHash)(
+                        "real file path", mRealLogPath)("file size", mLastFileSize)("last file position", mLastFilePos));
+                // check if we should skip first modify
+                // file is open or last update time is new
+                if (checkPointPtr->mFileOpenFlag != 0
+                    || (int32_t)time(NULL) - checkPointPtr->mLastUpdateTime < INT32_FLAG(skip_first_modify_time)) {
+                    mSkipFirstModify = false;
+                } else {
+                    mSkipFirstModify = true;
+                }
+                // delete checkpoint at last
+                checkPointManagerPtr->DeleteCheckPoint(mDevInode, mConfigName);
+                // because the reader is initialized by checkpoint, so set first watch to false
+                mFirstWatched = false;
+                getCheckPoint = true;
             }
-            // delete checkpoint at last
-            checkPointManagerPtr->DeleteCheckPoint(mDevInode, mConfigName);
-            // because the reader is initialized by checkpoint, so set first watch to false
-            mFirstWatched = false;
-            getCheckPoint = true;
         }
         if (!getCheckPoint){
             if (checkPointManagerPtr->GetDockerFileCheckPoint(mDevInode, mConfigName, checkPointSharePtr)){
