@@ -267,6 +267,12 @@ void CheckPointManager::LoadFileCheckPoint(const Json::Value& root) {
                     filePath, offset, sigSize, sigHash, devInode, configName, realFilePath, fileOpenFlag);
                 ptr->mLastUpdateTime = update_time;
                 AddCheckPoint(ptr);
+                if (meta.isMember("docker_file"));{
+                    ifstream f(realFilePath.c_str());
+                    if (f.good());{
+                        AddDockerFileCheckPoint(ptr);
+                    }
+                }
             } else {
                 // find config
                 size_t lastSeparator = filePath.find_last_of(PATH_SEPARATOR[0]);
@@ -340,6 +346,7 @@ bool CheckPointManager::DumpCheckPointToLocal() {
             leaf["dev"] = Json::Value(Json::UInt64(checkPointPtr->mDevInode.dev));
             leaf["file_open"] = Json::Value(checkPointPtr->mFileOpenFlag);
             leaf["config_name"] = Json::Value(checkPointPtr->mConfigName);
+            leaf["docker_file"] = Json::Value(true);
             // forward compatible
             leaf["sig"] = Json::Value(string(""));
             // use filename + dev + inode + configName to prevent same filename conflict
