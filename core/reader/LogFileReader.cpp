@@ -182,8 +182,8 @@ void LogFileReader::InitReader(bool tailExisted, FileReadPolicy policy, uint32_t
                 getCheckPoint = true;
             }
         }
-        if (!getCheckPoint){
-            if (checkPointManagerPtr->GetDockerFileCheckPoint(mDevInode, mConfigName, checkPointSharePtr)){
+        if (checkPointManagerPtr->GetDockerFileCheckPoint(mDevInode, mConfigName, checkPointSharePtr)){
+            if (!getCheckPoint){
                 CheckPoint* checkPointPtr = checkPointSharePtr.get();
                 mLastFilePos = checkPointPtr->mOffset;
                 mLastReadPos = mLastFilePos;
@@ -205,11 +205,11 @@ void LogFileReader::InitReader(bool tailExisted, FileReadPolicy policy, uint32_t
                 } else {
                     mSkipFirstModify = true;
                 }
-                // delete dockerfile checkpoint at last
-                checkPointManagerPtr->DeleteDockerFileCheckPoint(mDevInode, mConfigName);
                 // because the reader is initialized by checkpoint, so set first watch to false
                 mFirstWatched = false;
             }
+            // delete dockerfile checkpoint at last
+            checkPointManagerPtr->DeleteDockerFileCheckPoint(mDevInode, mConfigName);
         }
     }
 
