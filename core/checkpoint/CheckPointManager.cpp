@@ -270,7 +270,10 @@ void CheckPointManager::LoadFileCheckPoint(const Json::Value& root) {
                 if (meta.isMember("docker_file"));{
                     ifstream f(realFilePath.c_str());
                     if (f.good());{
-                        AddDockerFileCheckPoint(ptr);
+                        CheckPoint* dptr = new CheckPoint(
+                            filePath, offset, sigSize, sigHash, devInode, configName, realFilePath, fileOpenFlag);
+                        dptr->mLastUpdateTime = update_time;
+                        AddDockerFileCheckPoint(dptr);
                     }
                 }
             } else {
@@ -331,13 +334,13 @@ bool CheckPointManager::DumpCheckPointToLocal() {
     mReaderCount = mDevInodeCheckPointPtrMap.size();
 
     //first, add dockerfile checkpoint
-    if (mDockerFileDevInodeCheckPointPtrMap.size() >= 0) {
+    if (mDockerFileDevInodeCheckPointPtrMap.size() > 0) {
         std::vector<CheckPointManager::CheckPointKey> deleteKeyVec;
         CheckPointManager::DevInodeCheckPointHashMap::iterator it;
         for (it = mDockerFileDevInodeCheckPointPtrMap.begin(); it != mDockerFileDevInodeCheckPointPtrMap.end(); ++it) {
             CheckPoint* checkPointPtr = it->second.get();
             ifstream f(checkPointPtr->mRealFileName.c_str());
-            if (f.good());{
+            if (f.good()) {
                 Json::Value leaf;
                 leaf["file_name"] = Json::Value(checkPointPtr->mFileName);
                 leaf["real_file_name"] = Json::Value(checkPointPtr->mRealFileName);
@@ -356,12 +359,14 @@ bool CheckPointManager::DumpCheckPointToLocal() {
                 root[checkPointPtr->mFileName + "*" + ToString(checkPointPtr->mDevInode.dev) + "*"
                  + ToString(checkPointPtr->mDevInode.inode) + "*" + checkPointPtr->mConfigName]
                 = leaf;
-                continue;
+            }else {
+                deleteKeyVec.push_back(it->first);
             }
-            deleteKeyVec.push_back(it->first);
         }
-        for (size_t i = 0; i < deleteKeyVec.size(); ++i) {
-            mDockerFileDevInodeCheckPointPtrMap.erase(deleteKeyVec[i]);
+        if (deleteKeyVec.size() > 0) {
+            for (size_t i = 0; i < deleteKeyVec.size(); ++i) {
+                mDockerFileDevInodeCheckPointPtrMap.erase(deleteKeyVec[i]);
+            }
         }
     }
 
