@@ -332,27 +332,36 @@ bool CheckPointManager::DumpCheckPointToLocal() {
 
     //first, add dockerfile checkpoint
     if (mDockerFileDevInodeCheckPointPtrMap.size() >= 0) {
+        std::vector<CheckPointManager::CheckPointKey> deleteKeyVec;
         CheckPointManager::DevInodeCheckPointHashMap::iterator it;
         for (it = mDockerFileDevInodeCheckPointPtrMap.begin(); it != mDockerFileDevInodeCheckPointPtrMap.end(); ++it) {
             CheckPoint* checkPointPtr = it->second.get();
-            Json::Value leaf;
-            leaf["file_name"] = Json::Value(checkPointPtr->mFileName);
-            leaf["real_file_name"] = Json::Value(checkPointPtr->mRealFileName);
-            leaf["offset"] = Json::Value(ToString(checkPointPtr->mOffset));
-            leaf["sig_size"] = Json::Value(Json::UInt(checkPointPtr->mSignatureSize));
-            leaf["sig_hash"] = Json::Value(Json::UInt64(checkPointPtr->mSignatureHash));
-            leaf["update_time"] = Json::Value(checkPointPtr->mLastUpdateTime);
-            leaf["inode"] = Json::Value(Json::UInt64(checkPointPtr->mDevInode.inode));
-            leaf["dev"] = Json::Value(Json::UInt64(checkPointPtr->mDevInode.dev));
-            leaf["file_open"] = Json::Value(checkPointPtr->mFileOpenFlag);
-            leaf["config_name"] = Json::Value(checkPointPtr->mConfigName);
-            leaf["docker_file"] = Json::Value(true);
-            // forward compatible
-            leaf["sig"] = Json::Value(string(""));
-            // use filename + dev + inode + configName to prevent same filename conflict
-            root[checkPointPtr->mFileName + "*" + ToString(checkPointPtr->mDevInode.dev) + "*"
+            ifstream f(checkPointPtr->mRealFileName.c_str());
+            if (f.good());{
+                Json::Value leaf;
+                leaf["file_name"] = Json::Value(checkPointPtr->mFileName);
+                leaf["real_file_name"] = Json::Value(checkPointPtr->mRealFileName);
+                leaf["offset"] = Json::Value(ToString(checkPointPtr->mOffset));
+                leaf["sig_size"] = Json::Value(Json::UInt(checkPointPtr->mSignatureSize));
+                leaf["sig_hash"] = Json::Value(Json::UInt64(checkPointPtr->mSignatureHash));
+                leaf["update_time"] = Json::Value(checkPointPtr->mLastUpdateTime);
+                leaf["inode"] = Json::Value(Json::UInt64(checkPointPtr->mDevInode.inode));
+                leaf["dev"] = Json::Value(Json::UInt64(checkPointPtr->mDevInode.dev));
+                leaf["file_open"] = Json::Value(checkPointPtr->mFileOpenFlag);
+                leaf["config_name"] = Json::Value(checkPointPtr->mConfigName);
+                leaf["docker_file"] = Json::Value(true);
+                // forward compatible
+                leaf["sig"] = Json::Value(string(""));
+                // use filename + dev + inode + configName to prevent same filename conflict
+                root[checkPointPtr->mFileName + "*" + ToString(checkPointPtr->mDevInode.dev) + "*"
                  + ToString(checkPointPtr->mDevInode.inode) + "*" + checkPointPtr->mConfigName]
                 = leaf;
+                continue;
+            }
+            deleteKeyVec.push_back(it->first);
+        }
+        for (size_t i = 0; i < deleteKeyVec.size(); ++i) {
+            mDockerFileDevInodeCheckPointPtrMap.erase(deleteKeyVec[i]);
         }
     }
 
