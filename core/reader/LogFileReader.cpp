@@ -147,36 +147,82 @@ void LogFileReader::InitReader(bool tailExisted, FileReadPolicy policy, uint32_t
         static CheckPointManager* checkPointManagerPtr = CheckPointManager::Instance();
         // hold on checkPoint share ptr, so this check point will not be delete in this block
         CheckPointPtr checkPointSharePtr;
-        if (checkPointManagerPtr->GetCheckPoint(mDevInode, mConfigName, checkPointSharePtr)) {
-            CheckPoint* checkPointPtr = checkPointSharePtr.get();
-            mLastFilePos = checkPointPtr->mOffset;
-            mLastForceRead = checkPointPtr->mLastForceRead;
-            mCache = checkPointPtr->mCache;
-            mLastFileSignatureHash = checkPointPtr->mSignatureHash;
-            mLastFileSignatureSize = checkPointPtr->mSignatureSize;
-            mRealLogPath = checkPointPtr->mRealFileName;
-            mLastEventTime = checkPointPtr->mLastUpdateTime;
-            mContainerStopped = checkPointPtr->mContainerStopped;
-            LOG_INFO(sLogger,
-                     ("recover log reader status from checkpoint, project", mProjectName)("logstore", mCategory)(
-                         "config", mConfigName)("log reader queue name", mHostLogPath)(
-                         "file device", ToString(mDevInode.dev))("file inode", ToString(mDevInode.inode))(
-                         "file signature", mLastFileSignatureHash)("real file path", mRealLogPath)(
-                         "file size", mLastFileSize)("last file position", mLastFilePos));
-            // if file is open or
-            // last update time is new and the file's container is not stopped we
-            // we should use first modify
-            if (checkPointPtr->mFileOpenFlag
-                || ((int32_t)time(NULL) - checkPointPtr->mLastUpdateTime < INT32_FLAG(skip_first_modify_time)
-                    && !mContainerStopped)) {
-                mSkipFirstModify = false;
-            } else {
-                mSkipFirstModify = true;
+        // zk add getCheckPoint
+        bool getCheckPoint = false;
+        string::size_type emptydir = mHostLogPath.find("kubernetes.io~empty-dir");
+        string::size_type inner = mHostLogPath.find("io.containerd.snapshotter.v1.overlayfs");
+        bool ignore = false;
+        if (emptydir != string::npos || inner != string::npos){
+           ignore = true;
+        }
+        if (!ignore){
+            if (checkPointManagerPtr->GetCheckPoint(mDevInode, mConfigName, checkPointSharePtr)) {
+                CheckPoint* checkPointPtr = checkPointSharePtr.get();
+                mLastFilePos = checkPointPtr->mOffset;
+                mLastForceRead = checkPointPtr->mLastForceRead;
+                mCache = checkPointPtr->mCache;
+                mLastFileSignatureHash = checkPointPtr->mSignatureHash;
+                mLastFileSignatureSize = checkPointPtr->mSignatureSize;
+                mRealLogPath = checkPointPtr->mRealFileName;
+                mLastEventTime = checkPointPtr->mLastUpdateTime;
+                mContainerStopped = checkPointPtr->mContainerStopped;
+                LOG_INFO(sLogger,
+                         ("recover log reader status from checkpoint, project", mProjectName)("logstore", mCategory)(
+                             "config", mConfigName)("log reader queue name", mHostLogPath)(
+                             "file device", ToString(mDevInode.dev))("file inode", ToString(mDevInode.inode))(
+                             "file signature", mLastFileSignatureHash)("real file path", mRealLogPath)(
+                             "file size", mLastFileSize)("last file position", mLastFilePos));
+                // if file is open or
+                // last update time is new and the file's container is not stopped we
+                // we should use first modify
+                if (checkPointPtr->mFileOpenFlag
+                    || ((int32_t)time(NULL) - checkPointPtr->mLastUpdateTime < INT32_FLAG(skip_first_modify_time)
+                        && !mContainerStopped)) {
+                    mSkipFirstModify = false;
+                } else {
+                    mSkipFirstModify = true;
+                }
+                // delete checkpoint at last
+                checkPointManagerPtr->DeleteCheckPoint(mDevInode, mConfigName);
+                // because the reader is initialized by checkpoint, so set first watch to false
+                mFirstWatched = false;
+                // zk add getCheckPoint
+                getCheckPoint = true;
             }
-            // delete checkpoint at last
-            checkPointManagerPtr->DeleteCheckPoint(mDevInode, mConfigName);
-            // because the reader is initialized by checkpoint, so set first watch to false
-            mFirstWatched = false;
+        }
+        // zk add getCheckPoint
+        if (checkPointManagerPtr->GetDockerFileCheckPoint(mDevInode, mConfigName, checkPointSharePtr)){
+            if (!getCheckPoint){
+                if (checkPointManagerPtr->GetDockerFileCheckPoint(mDevInode, mConfigName, checkPointSharePtr)){
+                CheckPoint* checkPointPtr = checkPointSharePtr.get();
+                mLastFilePos = checkPointPtr->mOffset;
+                mLastForceRead = checkPointPtr->mLastForceRead;
+                mCache = checkPointPtr->mCache;
+                mLastFileSignatureHash = checkPointPtr->mSignatureHash;
+                mLastFileSignatureSize = checkPointPtr->mSignatureSize;
+                mRealLogPath = checkPointPtr->mRealFileName;
+                mLastEventTime = checkPointPtr->mLastUpdateTime;
+                mContainerStopped = checkPointPtr->mContainerStopped;
+                LOG_INFO(
+                    sLogger,
+                    ("recover log reader status from dockerfile checkpoint, project", mProjectName)("logstore", mCategory)(
+                        "config", mConfigName)("log reader queue name", mHostLogPath)("file device", ToString(mDevInode.dev))(
+                        "file inode", ToString(mDevInode.inode))("file signature", mLastFileSignatureHash)(
+                        "real file path", mRealLogPath)("file size", mLastFileSize)("last file position", mLastFilePos));
+                // check if we should skip first modify
+                // file is open or last update time is new
+                if (checkPointPtr->mFileOpenFlag != 0
+                    || (int32_t)time(NULL) - checkPointPtr->mLastUpdateTime < INT32_FLAG(skip_first_modify_time)) {
+                    mSkipFirstModify = false;
+                } else {
+                    mSkipFirstModify = true;
+                }
+                // because the reader is initialized by checkpoint, so set first watch to false
+                mFirstWatched = false;
+            }
+            // delete dockerfile checkpoint at last
+                checkPointManagerPtr->DeleteDockerFileCheckPoint(mDevInode, mConfigName);
+        }
         }
     }
 
@@ -2379,6 +2425,43 @@ LogFileReader::~LogFileReader() {
                  "file inode", ToString(mDevInode.inode))("file signature", mLastFileSignatureHash)(
                  "file size", mLastFileSize)("last file position", mLastFilePos));
     CloseFilePtr();
+
+    // zk add mContainerStopped Event handler
+    string::size_type emptyDir = mHostLogPath.find("kubernetes.io~empty-dir");
+    string::size_type inner = mHostLogPath.find("io.containerd.snapshotter.v1.overlayfs");
+
+    bool ignore = false;
+    if (emptyDir != string::npos || inner != string::npos){
+        ignore = true;
+    }
+
+    if (mContainerStopped && !ignore) {
+           LOG_INFO(sLogger,("container stop and container file still existd, add checkpoint to dockerfile checkpoint",mHostLogPath));
+           CheckPoint* checkPointPtr = new CheckPoint(mHostLogPath,
+                                                  mLastFilePos,
+                                                  mLastFileSignatureSize,
+                                                  mLastFileSignatureHash,
+                                                  mDevInode,
+                                                  mConfigName,
+                                                  mRealLogPath,
+                                                  mLogFileOp.IsOpen(),
+                                                  mContainerStopped,
+                                                  mLastForceRead);
+           // use last event time as checkpoint's last update time
+           checkPointPtr->mLastUpdateTime = mLastEventTime;
+           checkPointPtr->mCache = mCache;
+           CheckPointManager::Instance()->AddDockerFileCheckPoint(checkPointPtr);
+    }
+    // zk add ignore
+    if (mFileDeleted && !ignore) {
+           LOG_INFO(sLogger,("file deleted, check if dockerfile checkpoint existed",mHostLogPath));
+           CheckPointPtr checkPointSharePtr;
+           if (CheckPointManager::Instance()->GetDockerFileCheckPoint(mDevInode, mConfigName, checkPointSharePtr)){
+               LOG_INFO(sLogger,("dockerfile checkpoint existed,delete it",mHostLogPath));
+               CheckPointManager::Instance()->DeleteDockerFileCheckPoint(mDevInode,mHostLogPath);
+           }
+    }
+
 
     // Mark GC so that corresponding resources can be released.
     // For config update, reader will be recreated, which will retrieve these

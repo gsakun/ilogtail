@@ -109,6 +109,8 @@ public:
 
 private:
     DevInodeCheckPointHashMap mDevInodeCheckPointPtrMap;
+    // zk add mDockerFileDevInodeCheckPointPtrMap
+    DevInodeCheckPointHashMap mDockerFileDevInodeCheckPointPtrMap;
     std::unordered_map<std::string, DirCheckPointPtr> mDirNameMap;
     int32_t mLastCheckTime;
     int32_t mLastDumpTime;
@@ -120,8 +122,12 @@ private:
 public:
     bool CheckVersion();
     void AddCheckPoint(CheckPoint* checkPointPtr);
+    // zk add AddDockerFileCheckPoint
+    void AddDockerFileCheckPoint(CheckPoint* checkPointPtr);
     void AddDirCheckPoint(const std::string& dirname);
     void DeleteCheckPoint(DevInode devInode, const std::string& configName);
+    // zk add DeleteDockerFileCheckPoint
+    void DeleteDockerFileCheckPoint(DevInode devInode, const std::string& configName);
     void DeleteDirCheckPoint(const std::string& filename);
     void LoadCheckPoint();
     void LoadDirCheckPoint(const Json::Value& root);
@@ -130,6 +136,8 @@ public:
     int32_t GetReaderCount();
     bool GetCheckPoint(DevInode devInode, const std::string& configName, CheckPointPtr& checkPointPtr);
     bool GetDirCheckPoint(const std::string& filename, DirCheckPointPtr& checkPointPtr);
+    // zk add GetDockerFileCheckPoint
+    bool GetDockerFileCheckPoint(DevInode devInode, const std::string& configName, CheckPointPtr& checkPointPtr);
     void RemoveAllCheckPoint();
     void CheckTimeoutCheckPoint();
     bool NeedDump(int32_t curTime);

@@ -55,11 +55,30 @@ void CheckPointManager::AddCheckPoint(CheckPoint* checkPointPtr) {
         CheckPointKey(checkPointPtr->mDevInode, checkPointPtr->mConfigName), CheckPointPtr(checkPointPtr)));
 }
 
+// zk add AddDockerFileCheckPoint
+void CheckPointManager::AddDockerFileCheckPoint(CheckPoint* checkPointPtr) {
+    DevInodeCheckPointHashMap::iterator it
+        = mDockerFileDevInodeCheckPointPtrMap.find(CheckPointKey(checkPointPtr->mDevInode, checkPointPtr->mConfigName));
+    if (it != mDockerFileDevInodeCheckPointPtrMap.end())
+        mDockerFileDevInodeCheckPointPtrMap.erase(it);
+    mDockerFileDevInodeCheckPointPtrMap.insert(std::make_pair<CheckPointKey, CheckPointPtr>(
+        CheckPointKey(checkPointPtr->mDevInode, checkPointPtr->mConfigName), CheckPointPtr(checkPointPtr)));
+}
+
+
 void CheckPointManager::DeleteCheckPoint(DevInode devInode, const std::string& configName) {
     DevInodeCheckPointHashMap::iterator it = mDevInodeCheckPointPtrMap.find(CheckPointKey(devInode, configName));
     if (it != mDevInodeCheckPointPtrMap.end())
         mDevInodeCheckPointPtrMap.erase(it);
 }
+
+// zk add DeleteDockerFileCheckPoint
+void CheckPointManager::DeleteDockerFileCheckPoint(DevInode devInode, const std::string& configName) {
+    DevInodeCheckPointHashMap::iterator it = mDockerFileDevInodeCheckPointPtrMap.find(CheckPointKey(devInode, configName));
+    if (it != mDockerFileDevInodeCheckPointPtrMap.end())
+        mDockerFileDevInodeCheckPointPtrMap.erase(it);
+}
+
 
 bool CheckPointManager::GetCheckPoint(DevInode devInode, const std::string& configName, CheckPointPtr& checkPointPtr) {
     DevInodeCheckPointHashMap::iterator it = mDevInodeCheckPointPtrMap.find(CheckPointKey(devInode, configName));
@@ -69,6 +88,17 @@ bool CheckPointManager::GetCheckPoint(DevInode devInode, const std::string& conf
     }
     return false;
 }
+
+// zk add GetDockerFileCheckPoint
+bool CheckPointManager::GetDockerFileCheckPoint(DevInode devInode, const std::string& configName, CheckPointPtr& checkPointPtr) {
+    DevInodeCheckPointHashMap::iterator it = mDockerFileDevInodeCheckPointPtrMap.find(CheckPointKey(devInode, configName));
+    if (it != mDockerFileDevInodeCheckPointPtrMap.end()) {
+        checkPointPtr = it->second;
+        return true;
+    }
+    return false;
+}
+
 
 void CheckPointManager::DeleteDirCheckPoint(const std::string& filename) {
     std::unordered_map<std::string, DirCheckPointPtr>::iterator it = mDirNameMap.find(filename);
@@ -258,6 +288,15 @@ void CheckPointManager::LoadFileCheckPoint(const Json::Value& root) {
                                                  lastForceRead != 0);
                 ptr->mLastUpdateTime = update_time;
                 AddCheckPoint(ptr);
+                if (meta.isMember("docker_file"));{
+                    ifstream f(realFilePath.c_str());
+                    if (f.good());{
+                        CheckPoint* dptr = new CheckPoint(
+                            filePath, offset, sigSize, sigHash, devInode, configName, realFilePath, fileOpenFlag,containerStopped != 0,lastForceRead != 0);
+                        dptr->mLastUpdateTime = update_time;
+                        AddDockerFileCheckPoint(dptr);
+                    }
+                }                
             } else {
                 // find config
                 size_t lastSeparator = filePath.find_last_of(PATH_SEPARATOR[0]);
@@ -316,6 +355,46 @@ bool CheckPointManager::DumpCheckPointToLocal() {
 
     Json::Value root;
     mReaderCount = mDevInodeCheckPointPtrMap.size();
+
+    //zk first, add dockerfile checkpoint
+    if (mDockerFileDevInodeCheckPointPtrMap.size() > 0) {
+        std::vector<CheckPointManager::CheckPointKey> deleteKeyVec;
+        CheckPointManager::DevInodeCheckPointHashMap::iterator it;
+        for (it = mDockerFileDevInodeCheckPointPtrMap.begin(); it != mDockerFileDevInodeCheckPointPtrMap.end(); ++it) {
+            CheckPoint* checkPointPtr = it->second.get();
+            ifstream f(checkPointPtr->mRealFileName.c_str());
+            if (f.good()) { 
+                Json::Value leaf;
+                leaf["file_name"] = Json::Value(checkPointPtr->mFileName);
+                leaf["real_file_name"] = Json::Value(checkPointPtr->mRealFileName);
+                leaf["offset"] = Json::Value(ToString(checkPointPtr->mOffset));
+                leaf["sig_size"] = Json::Value(Json::UInt(checkPointPtr->mSignatureSize));
+                leaf["sig_hash"] = Json::Value(Json::UInt64(checkPointPtr->mSignatureHash));
+                leaf["update_time"] = Json::Value(checkPointPtr->mLastUpdateTime);
+                leaf["inode"] = Json::Value(Json::UInt64(checkPointPtr->mDevInode.inode));
+                leaf["dev"] = Json::Value(Json::UInt64(checkPointPtr->mDevInode.dev));
+                leaf["file_open"] = Json::Value(checkPointPtr->mFileOpenFlag ? 1 : 0);
+                leaf["container_stopped"] = Json::Value(checkPointPtr->mContainerStopped ? 1 : 0);
+                leaf["last_force_read"] = Json::Value(checkPointPtr->mLastForceRead ? 1 : 0);
+                leaf["config_name"] = Json::Value(checkPointPtr->mConfigName);
+                leaf["docker_file"] = Json::Value(true);
+                // forward compatible
+                leaf["sig"] = Json::Value(string(""));
+                // use filename + dev + inode + configName to prevent same filename conflict
+                root[checkPointPtr->mFileName + "*" + ToString(checkPointPtr->mDevInode.dev) + "*"
+                     + ToString(checkPointPtr->mDevInode.inode) + "*" + checkPointPtr->mConfigName]
+                    = leaf;
+            }else {
+                deleteKeyVec.push_back(it->first);
+            }
+        }
+        if (deleteKeyVec.size() > 0) {
+            for (size_t i = 0; i < deleteKeyVec.size(); ++i) {
+                mDockerFileDevInodeCheckPointPtrMap.erase(deleteKeyVec[i]);
+            }
+        }
+    }
+
     if (mDevInodeCheckPointPtrMap.size() <= (size_t)INT32_FLAG(check_point_max_count)) {
         CheckPointManager::DevInodeCheckPointHashMap::iterator it;
         for (it = mDevInodeCheckPointPtrMap.begin(); it != mDevInodeCheckPointPtrMap.end(); ++it) {
