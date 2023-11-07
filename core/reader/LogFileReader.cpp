@@ -202,7 +202,7 @@ void LogFileReader::InitReader(bool tailExisted, FileReadPolicy policy, uint32_t
                 mLastFileSignatureSize = checkPointPtr->mSignatureSize;
                 mRealLogPath = checkPointPtr->mRealFileName;
                 mLastEventTime = checkPointPtr->mLastUpdateTime;
-                mContainerStopped = checkPointPtr->mContainerStopped;
+                mContainerStopped = false;
                 LOG_INFO(
                     sLogger,
                     ("recover log reader status from dockerfile checkpoint, project", mProjectName)("logstore", mCategory)(
