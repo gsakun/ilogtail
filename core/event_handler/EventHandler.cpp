@@ -440,6 +440,13 @@ LogFileReaderPtr ModifyHandler::CreateLogFileReaderPtr(
                 return LogFileReaderPtr();
             }
         }
+    }else{
+           LOG_INFO(sLogger,
+             ("need check skip flag first and flag is true", "skip it")(
+                 "project", pConfig->GetProjectName())("logstore", pConfig->GetCategory())("config", pConfig->mConfigName)(
+                 "log reader queue name", PathJoin(path, name))("log reader queue length", readerArray.size())(
+                 "file device", ToString(devInode.dev))("file inode", ToString(devInode.inode))(
+                 "file size", readerPtr->GetFileSize())("reading start position", readerPtr->GetLastFilePos()));
     }
 
     backFlag ? readerArray.push_back(readerPtr) : readerArray.push_front(readerPtr);
