@@ -208,10 +208,10 @@ void LogFileReader::InitReader(bool tailExisted, FileReadPolicy policy, uint32_t
                     ("recover log reader status from dockerfile checkpoint, project", mProjectName)("logstore", mCategory)(
                         "config", mConfigName)("log reader queue name", mHostLogPath)("file device", ToString(mDevInode.dev))(
                         "file inode", ToString(mDevInode.inode))("file signature", mLastFileSignatureHash)(
-                        "real file path", mRealLogPath)("file size", mLastFileSize)("last file position", mLastFilePos));
+                        "real file path", mRealLogPath)("file size", mLastFileSize)("last file position", mLastFilePos)("current file open state",ToString(mFileOpenFlag)));
                 // check if we should skip first modify
                 // file is open or last update time is new
-                if (checkPointPtr->mFileOpenFlag != 0
+                if (checkPointPtr->mFileOpenFlag
                     || (int32_t)time(NULL) - checkPointPtr->mLastUpdateTime < INT32_FLAG(skip_first_modify_time)) {
                     mSkipFirstModify = false;
                 } else {
@@ -2436,7 +2436,7 @@ LogFileReader::~LogFileReader() {
     }
 
     if (mContainerStopped && !ignore) {
-           LOG_INFO(sLogger,("container stop and container file still existd, add checkpoint to dockerfile checkpoint",mHostLogPath));
+           LOG_INFO(sLogger,("container stop and container file still exist, add checkpoint to dockerfile checkpoint",mHostLogPath));
            CheckPoint* checkPointPtr = new CheckPoint(mHostLogPath,
                                                   mLastFilePos,
                                                   mLastFileSignatureSize,
