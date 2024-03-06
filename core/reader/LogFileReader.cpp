@@ -208,7 +208,7 @@ void LogFileReader::InitReader(bool tailExisted, FileReadPolicy policy, uint32_t
                     ("recover log reader status from dockerfile checkpoint, project", mProjectName)("logstore", mCategory)(
                         "config", mConfigName)("log reader queue name", mHostLogPath)("file device", ToString(mDevInode.dev))(
                         "file inode", ToString(mDevInode.inode))("file signature", mLastFileSignatureHash)(
-                        "real file path", mRealLogPath)("file size", mLastFileSize)("last file position", mLastFilePos)("current file open state",ToString(mFileOpenFlag)));
+                        "real file path", mRealLogPath)("file size", mLastFileSize)("last file position", mLastFilePos)("current file open state",ToString(checkPointPtr->mFileOpenFlag))("last update time",ToString(checkPointPtr->mLastUpdateTime)));
                 // check if we should skip first modify
                 // file is open or last update time is new
                 if (checkPointPtr->mFileOpenFlag
