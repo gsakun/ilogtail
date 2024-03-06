@@ -217,7 +217,7 @@ void LogFileReader::InitReader(bool tailExisted, FileReadPolicy policy, uint32_t
                 } else {
                     mSkipFirstModify = true;
                 }
-                LOG_INFO(sLogger,("if skip first modify",ToString(mSkipFirstModify)))
+                LOG_INFO(sLogger,("if skip first modify",ToString(mSkipFirstModify)));
                 // because the reader is initialized by checkpoint, so set first watch to false
                 mFirstWatched = false;
             }
