@@ -211,8 +211,7 @@ void LogFileReader::InitReader(bool tailExisted, FileReadPolicy policy, uint32_t
                         "real file path", mRealLogPath)("file size", mLastFileSize)("last file position", mLastFilePos)("current file open state",ToString(checkPointPtr->mFileOpenFlag))("last update time",ToString(checkPointPtr->mLastUpdateTime)));
                 // check if we should skip first modify
                 // file is open or last update time is new
-                if (checkPointPtr->mFileOpenFlag
-                    || (int32_t)time(NULL) - checkPointPtr->mLastUpdateTime < INT32_FLAG(skip_first_modify_time)) {
+                if ((int32_t)time(NULL) - checkPointPtr->mLastUpdateTime < INT32_FLAG(skip_first_modify_time)) {
                     mSkipFirstModify = false;
                 } else {
                     mSkipFirstModify = true;
