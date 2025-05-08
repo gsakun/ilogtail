@@ -22,7 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/typeurl/v2"
+	"github.com/containerd/typeurl"
 	"net"
 	"net/url"
 	"os"
@@ -489,11 +489,11 @@ func (cw *CRIRuntimeWrapper) containerdEventListener() {
 				}
 				switch ev := evt.(type) {
 				case *eventtypes.ContainerCreate:
-					_ = cw.fetchOne(ev.GetID())
+					_ = cw.fetchOne(ev.ID)
 				case *eventtypes.ContainerUpdate:
-					_ = cw.fetchOne(ev.GetID())
+					_ = cw.fetchOne(ev.ID)
 				case *eventtypes.ContainerDelete:
-					_ = cw.fetchOne(ev.GetID())
+					_ = cw.fetchOne(ev.ID)
 				default:
 				}
 			case err = <-errors:
