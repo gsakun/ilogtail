@@ -21,24 +21,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/typeurl/v2"
 	"net"
 	"net/url"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/containerd/containerd"
 
+	"github.com/alibaba/ilogtail/pkg/config"
+	"github.com/alibaba/ilogtail/pkg/logger"
+	eventtypes "github.com/containerd/containerd/api/events"
 	containerdcriserver "github.com/containerd/containerd/pkg/cri/server"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"google.golang.org/grpc"
-	cri "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-
-	"github.com/alibaba/ilogtail/pkg/config"
-	"github.com/alibaba/ilogtail/pkg/logger"
+	cri "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
 const (
@@ -446,6 +449,73 @@ func (cw *CRIRuntimeWrapper) fetchAll() error {
 	}
 
 	return nil
+}
+
+func criRuntimeRecover() {
+	if err := recover(); err != nil {
+		trace := make([]byte, 2048)
+		runtime.Stack(trace, true)
+		logger.Error(context.Background(), "PLUGIN_RUNTIME_ALARM", "docker center runtime error", err, "stack", string(trace))
+	}
+}
+func (cw *CRIRuntimeWrapper) containerdEventListener() {
+	errorCount := 0
+	defer criRuntimeRecover()
+	timer := time.NewTimer(EventListenerTimeout)
+	var err error
+	for {
+		logger.Info(context.Background(), "containerd event listener", "start")
+		ctx, cancel := context.WithCancel(context.Background())
+		events, errors := cw.nativeClient.EventService().Subscribe(namespaces.WithNamespace(ctx, "k8s.io"))
+		breakFlag := false
+		for !breakFlag {
+			timer.Reset(EventListenerTimeout)
+			select {
+			case event, ok := <-events:
+				if !ok {
+					logger.Errorf(context.Background(), "CONTAINERD_EVENT_ALARM", "containerd event listener stop")
+					errorCount++
+					breakFlag = true
+					break
+				}
+				logger.Debug(context.Background(), "containerd event captured", event)
+				errorCount = 0
+				evt, err := typeurl.UnmarshalAny(event.Event)
+				if err != nil {
+					logger.Errorf(context.Background(), "CONTAINERD_EVENT_ALARM", "containerd event listener error: %v", err)
+					errorCount++
+					breakFlag = true
+					break
+				}
+				switch ev := evt.(type) {
+				case *eventtypes.ContainerCreate:
+					_ = cw.fetchOne(ev.GetID())
+				case *eventtypes.ContainerUpdate:
+					_ = cw.fetchOne(ev.GetID())
+				case *eventtypes.ContainerDelete:
+					_ = cw.fetchOne(ev.GetID())
+				default:
+				}
+			case err = <-errors:
+				logger.Error(context.Background(), "CONTAINERD_EVENT_ALARM", "containerd event listener error", err)
+				breakFlag = true
+			case <-timer.C:
+				logger.Errorf(context.Background(), "CONTAINERD_EVENT_ALARM", "no containerd event in 1 hour. Reset event listener")
+				breakFlag = true
+			}
+		}
+		cancel()
+		if errorCount > 10 && criRuntimeWrapper != nil {
+			logger.Info(context.Background(), "containerd listener fails and cri runtime wrapper is valid", "stop containerd listener")
+			break
+		}
+		// if always error, sleep 300 secs
+		if errorCount > 30 {
+			time.Sleep(time.Duration(300) * time.Second)
+		} else {
+			time.Sleep(time.Duration(10) * time.Second)
+		}
+	}
 }
 
 func (cw *CRIRuntimeWrapper) loopSyncContainers() {
