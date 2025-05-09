@@ -21,7 +21,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/typeurl"
 	"net"
 	"net/url"
@@ -458,6 +457,16 @@ func criRuntimeRecover() {
 		logger.Error(context.Background(), "PLUGIN_RUNTIME_ALARM", "docker center runtime error", err, "stack", string(trace))
 	}
 }
+
+func (cw *CRIRuntimeWrapper) getContainerType(containerID string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	container, err := cw.nativeClient.ContainerService().Get(ctx, containerID)
+	if err != nil {
+		return "", err
+	}
+	return container.Labels["io.cri-containerd.kind"], nil
+}
 func (cw *CRIRuntimeWrapper) containerdEventListener() {
 	errorCount := 0
 	defer criRuntimeRecover()
@@ -466,7 +475,7 @@ func (cw *CRIRuntimeWrapper) containerdEventListener() {
 	for {
 		logger.Info(context.Background(), "containerd event listener", "start")
 		ctx, cancel := context.WithCancel(context.Background())
-		events, errors := cw.nativeClient.EventService().Subscribe(namespaces.WithNamespace(ctx, "k8s.io"))
+		events, errors := cw.nativeClient.EventService().Subscribe(ctx, `topic~="/tasks/start|/tasks/delete"`)
 		breakFlag := false
 		for !breakFlag {
 			timer.Reset(EventListenerTimeout)
@@ -488,12 +497,34 @@ func (cw *CRIRuntimeWrapper) containerdEventListener() {
 					break
 				}
 				switch ev := evt.(type) {
-				case *eventtypes.ContainerCreate:
-					_ = cw.fetchOne(ev.ID)
-				case *eventtypes.ContainerUpdate:
-					_ = cw.fetchOne(ev.ID)
-				case *eventtypes.ContainerDelete:
-					cw.dockerCenter.markRemove(ev.ID)
+				case *eventtypes.TaskStart:
+					cType, err := cw.getContainerType(ev.ContainerID)
+					if err != nil {
+						logger.Errorf(context.Background(), "CONTAINERD_EVENT_ALARM", "containerd event listener error: %v", err)
+						errorCount++
+						breakFlag = true
+						break
+					}
+					if cType == "container" {
+						logger.Debugf(context.Background(), "containerd task event create container %v", ev.ContainerID)
+						_ = cw.fetchOne(ev.ContainerID)
+					} else {
+						continue
+					}
+				case *eventtypes.TaskDelete:
+					cType, err := cw.getContainerType(ev.ContainerID)
+					if err != nil {
+						logger.Errorf(context.Background(), "CONTAINERD_EVENT_ALARM", "containerd event listener error: %v", err)
+						errorCount++
+						breakFlag = true
+						break
+					}
+					if cType == "container" {
+						logger.Debugf(context.Background(), "containerd task event delete container %v", ev.ContainerID)
+						cw.dockerCenter.markRemove(ev.ContainerID)
+					} else {
+						continue
+					}
 				default:
 				}
 			case err = <-errors:
