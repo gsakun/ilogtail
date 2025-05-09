@@ -493,7 +493,7 @@ func (cw *CRIRuntimeWrapper) containerdEventListener() {
 				case *eventtypes.ContainerUpdate:
 					_ = cw.fetchOne(ev.ID)
 				case *eventtypes.ContainerDelete:
-					_ = cw.fetchOne(ev.ID)
+					cw.dockerCenter.markRemove(ev.ID)
 				default:
 				}
 			case err = <-errors:
