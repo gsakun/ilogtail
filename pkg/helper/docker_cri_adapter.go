@@ -82,10 +82,6 @@ type CRIRuntimeWrapper struct {
 }
 
 func IsCRIRuntimeValid(criRuntimeEndpoint string) bool {
-	if len(os.Getenv("USE_CONTAINERD")) > 0 {
-		return true
-	}
-
 	// Verify dockershim.sock existence.
 	for _, sock := range []string{dockerShimUnixSocket1, dockerShimUnixSocket2} {
 		if fi, err := os.Stat(sock); err == nil && !fi.IsDir() {
