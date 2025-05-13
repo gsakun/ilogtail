@@ -288,9 +288,9 @@ void CheckPointManager::LoadFileCheckPoint(const Json::Value& root) {
                                                  lastForceRead != 0);
                 ptr->mLastUpdateTime = update_time;
                 AddCheckPoint(ptr);
-                if (meta.isMember("docker_file"));{
+                if (meta.isMember("docker_file")) {
                     ifstream f(realFilePath.c_str());
-                    if (f.good());{
+                    if (f.good()) {
                         CheckPoint* dptr = new CheckPoint(
                             filePath, offset, sigSize, sigHash, devInode, configName, realFilePath, fileOpenFlag,containerStopped != 0,lastForceRead != 0);
                         dptr->mLastUpdateTime = update_time;

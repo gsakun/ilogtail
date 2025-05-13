@@ -15,18 +15,19 @@
 package logregex
 
 import (
+	"regexp"
+	"time"
+
 	"github.com/alibaba/ilogtail/pkg/helper"
 	"github.com/alibaba/ilogtail/pkg/logger"
 	"github.com/alibaba/ilogtail/pkg/pipeline"
 	"github.com/alibaba/ilogtail/pkg/protocol"
-
-	"regexp"
-	"time"
 )
 
 type ProcessorSplitRegex struct {
 	SplitKey              string
 	SplitRegex            string
+	SplitRegexCheckLength int
 	PreserveOthers        bool
 	NoKeyError            bool
 	EnableLogPositionMeta bool
@@ -42,11 +43,22 @@ func (p *ProcessorSplitRegex) Init(context pipeline.Context) error {
 	if p.regex, err = regexp.Compile(p.SplitRegex); err != nil {
 		return err
 	}
+	if p.SplitRegexCheckLength > 0 {
+		logger.Info(p.context.GetRuntimeContext(), "LOG_REGEX_SPLIT_CHECK_LENGTH", "check length", p.SplitRegexCheckLength)
+	}
 	return nil
 }
 
 func (*ProcessorSplitRegex) Description() string {
 	return "raw log regex split for logtail"
+}
+
+func headMatch(reg *regexp.Regexp, str string, length int) bool {
+	if len(str) < length {
+		return false
+	}
+	rst := reg.FindStringSubmatchIndex(str[:length])
+	return len(rst) >= 2 && rst[0] == 0
 }
 
 func fullMatch(reg *regexp.Regexp, str string) bool {
@@ -59,13 +71,28 @@ func (p *ProcessorSplitRegex) SplitLog(logArray []*protocol.Log, rawLog *protoco
 	lastLineIndex := 0
 	lastCheckIndex := 0
 
+	var checkLength int
+	if p.SplitRegexCheckLength != 0 {
+		checkLength = p.SplitRegexCheckLength
+	}
+
 	for i := 0; i < len(valueStr); i++ {
 		if valueStr[i] == '\n' {
+			line := valueStr[lastCheckIndex:i]
+			var matched bool
+
+			if checkLength > 0 {
+				matched = headMatch(p.regex, line, checkLength)
+			} else {
+				matched = fullMatch(p.regex, line)
+			}
+
 			// Case 1: current line matches, combine lines before as log content.
-			if fullMatch(p.regex, valueStr[lastCheckIndex:i]) && (lastLineIndex != 0 || lastCheckIndex != 0) {
+			if matched && (lastLineIndex != 0 || lastCheckIndex != 0) {
 				copyLog := protocol.CloneLog(rawLog)
 				copyLog.Contents = append(copyLog.Contents, &protocol.Log_Content{
-					Key: cont.GetKey(), Value: valueStr[lastLineIndex : lastCheckIndex-1]})
+					Key: cont.GetKey(), Value: valueStr[lastLineIndex : lastCheckIndex-1],
+				})
 				helper.ReviseFileOffset(copyLog, int64(lastLineIndex), p.EnableLogPositionMeta)
 				logArray = append(logArray, copyLog)
 				lastLineIndex = lastCheckIndex
@@ -74,14 +101,22 @@ func (p *ProcessorSplitRegex) SplitLog(logArray []*protocol.Log, rawLog *protoco
 		}
 	}
 
-	// Case 2: the last line does not end with \n, check if it matches, if so,
-	//   combine lines before as log content.
-	// Special case: only one line without \n, should skip and be handled by case 3.
+	// Case 2: the last line does not end with \n, check if it matches
 	if lastCheckIndex != 0 && lastCheckIndex < len(valueStr) {
-		if fullMatch(p.regex, valueStr[lastCheckIndex:]) {
+		line := valueStr[lastCheckIndex:]
+		var matched bool
+
+		if checkLength > 0 && len(line) >= checkLength {
+			matched = headMatch(p.regex, line, checkLength)
+		} else {
+			matched = fullMatch(p.regex, line)
+		}
+
+		if matched {
 			copyLog := protocol.CloneLog(rawLog)
 			copyLog.Contents = append(copyLog.Contents, &protocol.Log_Content{
-				Key: cont.GetKey(), Value: valueStr[lastLineIndex : lastCheckIndex-1]})
+				Key: cont.GetKey(), Value: valueStr[lastLineIndex : lastCheckIndex-1],
+			})
 			helper.ReviseFileOffset(copyLog, int64(lastLineIndex), p.EnableLogPositionMeta)
 			logArray = append(logArray, copyLog)
 			lastLineIndex = lastCheckIndex
@@ -91,7 +126,8 @@ func (p *ProcessorSplitRegex) SplitLog(logArray []*protocol.Log, rawLog *protoco
 	// Case 3: still has content, combine remainder lines as log content.
 	if lastLineIndex < len(valueStr) {
 		rawLog.Contents = append(rawLog.Contents, &protocol.Log_Content{
-			Key: cont.GetKey(), Value: valueStr[lastLineIndex:]})
+			Key: cont.GetKey(), Value: valueStr[lastLineIndex:],
+		})
 		helper.ReviseFileOffset(rawLog, int64(lastLineIndex), p.EnableLogPositionMeta)
 		logArray = append(logArray, rawLog)
 	}
