@@ -216,8 +216,9 @@ bool BoostRegexMatch(const char* buffer, const boost::regex& reg, string& except
     }
 }
 
-bool BoostRegexSearch(const char* buffer, size_t size, const boost::regex& reg, string& exception, boost::match_results<const char*>& what) {
+bool BoostRegexSearch(const char* buffer, size_t size, const boost::regex& reg, string& exception) {
     try {
+        boost::match_results<const char*> what;
         if (boost::regex_search(buffer, buffer + size, what, reg, boost::match_continuous)) {
             return true;
         } else {
@@ -268,7 +269,6 @@ bool BoostRegexSearch(const char* buffer, const boost::regex& reg, string& excep
         return false;
     }
 }
-
 uint32_t GetLittelEndianValue32(const uint8_t* buffer) {
     return buffer[3] << 24 | buffer[2] << 16 | buffer[1] << 8 | buffer[0];
 }

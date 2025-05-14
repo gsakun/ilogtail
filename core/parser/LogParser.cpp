@@ -403,7 +403,7 @@ bool LogParser::RegexLogLineParser(StringView buffer,
     boost::match_results<const char*> what;
     string exception;
     bool parseSuccess = true;
-    if (!BoostRegexSearch(buffer.data(), buffer.size(), reg, exception, what)) {
+    if (!BoostRegexMatch(buffer.data(), buffer.size(), reg, exception, what, boost::match_default)) {
         if (!exception.empty()) {
             if (AppConfig::GetInstance()->IsLogParseAlarmValid()) {
                 if (LogtailAlarm::GetInstance()->IsLowLevelAlarmValid()) {

@@ -529,6 +529,7 @@ void ConfigManagerBase::LoadSingleUserConfig(const std::string& logName, const J
                                     "",
                                     "",
                                     "",
+                                    0,
                                     projectName,
                                     false,
                                     0,
@@ -573,6 +574,7 @@ void ConfigManagerBase::LoadSingleUserConfig(const std::string& logName, const J
                                     "",
                                     "",
                                     "",
+                                    0,
                                     projectName,
                                     false,
                                     0,
@@ -618,6 +620,7 @@ void ConfigManagerBase::LoadSingleUserConfig(const std::string& logName, const J
                 if (logEndReg != "" && CheckRegFormat(logEndReg) == false) {
                     throw ExceptionBase("The log end line is not value regex : " + logEndReg);
                 }
+                int logRegexCheckLength = GetIntValue(value, "log_regex_check_length", 0);
                 int readerFlushTimeout = 5;
                 if (value.isMember("reader_flush_timeout"))
                     readerFlushTimeout = GetIntValue(value, "reader_flush_timeout");
@@ -636,6 +639,7 @@ void ConfigManagerBase::LoadSingleUserConfig(const std::string& logName, const J
                                     logBeginReg,
                                     logContinueReg,
                                     logEndReg,
+                                    logRegexCheckLength,
                                     projectName,
                                     isPreserve,
                                     preserveDepth,

@@ -77,6 +77,7 @@ ConfigYamlToJson::ConfigYamlToJson() {
     mFileConfigMap["LogBeginRegex"] = "log_begin_reg";
     mFileConfigMap["LogContinueRegex"] = "log_continue_reg";
     mFileConfigMap["LogEndRegex"] = "log_end_reg";
+    mFileConfigMap["logRegexCheckLength"] = "log_regex_check_length";
     mFileConfigMap["ReaderFlushTimeout"] = "reader_flush_timeout";
     // params specific to delimiter accelerate processor
     mFileConfigMap["Separator"] = "delimiter_separator";
@@ -396,7 +397,7 @@ bool ConfigYamlToJson::CheckPluginConfig(const string configName, const YAML::No
         return false;
     }
 
-    LOG_DEBUG(sLogger,
+    LOG_INFO(sLogger,
               ("CheckPluginConfig", "success")("is_file_mode", workMode.mIsFileMode)(
                   "input_plugin_type", workMode.mInputPluginType)("has_accelerate_processor",
                                                                   workMode.mHasAccelerateProcessor)(

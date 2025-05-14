@@ -155,7 +155,7 @@ bool ProcessorParseRegexNative::RegexLogLineParser(LogEvent& sourceEvent,
     StringView buffer = sourceEvent.GetContent(mSourceKey);
     bool parseSuccess = true;
     mProcParseInSizeBytes->Add(buffer.size());
-    if (!BoostRegexSearch(buffer.data(), buffer.size(), reg, exception, what)) {
+    if (!BoostRegexMatch(buffer.data(), buffer.size(), reg, exception, what, boost::match_default)) {
         if (!exception.empty()) {
             if (AppConfig::GetInstance()->IsLogParseAlarmValid()) {
                 if (GetContext().GetAlarm().IsLowLevelAlarmValid()) {

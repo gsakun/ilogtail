@@ -137,8 +137,8 @@ private:
     //   local time to adjust logs' time automatically.
     bool mEnableLogTimeAutoAdjust = false;
 
-    std::set<std::string> mDynamicPlugins;
     std::vector<std::string> mHostPathBlacklist;
+    std::set<std::string> mDynamicPlugins;
 
     /**
      * @brief Load ConfigServer, DataServer and network interface

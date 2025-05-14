@@ -110,6 +110,7 @@ public:
     std::string mConfigName; // name of log e.g. aliyun_com "##1.0##sls-zc-test$home-log"
     std::string mLogBeginReg; // the log begin line regex
     std::string mLogContinueReg; // the log continue line regex
+    int mlogRegexCheckLength; // the log regex check length
     std::string mLogEndReg; // the log end line regex
     int mReaderFlushTimeout; // timeout in seconds to flush a non-terminated log buffer.
     std::string mProjectName; // project name
@@ -238,6 +239,7 @@ public:
            const std::string& logBeginReg,
            const std::string& logContinueReg,
            const std::string& logEndReg,
+           int logRegexCheckLength,
            const std::string& projectName,
            bool isPreserve,
            int preserveDepth,

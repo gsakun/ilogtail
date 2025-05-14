@@ -53,6 +53,7 @@ void PluginRegistry::LoadPlugins() {
     LoadStaticPlugins();
     auto& plugins = AppConfig::GetInstance()->GetDynamicPlugins();
     LoadDynamicPlugins(plugins);
+    LOG_INFO(sLogger, ("load plugins", AppConfig::GetInstance()->GetDynamicPlugins().size()));
 }
 
 void PluginRegistry::UnloadPlugins() {
