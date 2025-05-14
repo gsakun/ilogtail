@@ -287,7 +287,7 @@ bool LogParser::RegexLogLineParser(StringView buffer,
     string exception;
     uint64_t preciseTimestamp = 0;
     bool parseSuccess = true;
-    if (!BoostRegexSearch(buffer.data(), buffer.size(), reg, exception, what)) {
+    if (!BoostRegexMatch(buffer.data(), buffer.size(), reg, exception, what, boost::match_default)) {
 #if defined(_MSC_VER) // Try std::regex on Windows.
         return StdRegexLogLineParser(buffer.data(),
                                      reg.str(),
