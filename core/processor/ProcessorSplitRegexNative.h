@@ -40,7 +40,7 @@ private:
                   std::vector<StringView>& logIndex,
                   std::vector<StringView>& discardIndex,
                   const StringView& logPath);
-    void SetLogMultilinePolicy(const std::string& begReg, const std::string& conReg, const std::string& endReg);
+    void SetLogMultilinePolicy(const std::string& begReg, const std::string& conReg, const std::string& endReg,int logRegexCheckLength);
     void HandleUnmatchLogs(const char* buffer,
                            int& multiBeginIndex,
                            int endIndex,
@@ -57,6 +57,7 @@ private:
     std::unique_ptr<boost::regex> mLogBeginRegPtr;
     std::unique_ptr<boost::regex> mLogContinueRegPtr;
     std::unique_ptr<boost::regex> mLogEndRegPtr;
+    int mLogRegexCheckLength = 0;
     bool mDiscardUnmatch = false;
     bool mEnableLogPositionMeta = false;
 #ifdef APSARA_UNIT_TEST_MAIN

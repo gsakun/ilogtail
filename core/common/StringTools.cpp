@@ -269,6 +269,64 @@ bool BoostRegexSearch(const char* buffer, const boost::regex& reg, string& excep
         return false;
     }
 }
+
+bool BoostRegexSearchWithLimit(const char* data,
+                               size_t length,
+                               const boost::regex& reg,
+                               std::string& exception,
+                               int regexCheckLength) {
+    // 调试日志：打印输入参数信息
+    LOG_DEBUG(sLogger, ("BoostRegexSearchWithLimit called length", length)
+                          ("regex_check_length", regexCheckLength));
+
+    // 计算实际匹配长度
+    size_t matchLength = (regexCheckLength > 0)
+                             ? std::min(length, static_cast<size_t>(regexCheckLength))
+                             : length;
+
+    // 调试日志：展示本次实际使用的匹配长度
+    LOG_DEBUG(sLogger, ("actual_match_length", matchLength));
+
+    const char* start = data;
+    const char* end = data + matchLength;
+
+    try {
+        boost::match_results<const char*> what;
+        bool matched = boost::regex_search(start, end, what, reg, boost::match_default);
+
+        // 调试日志：输出是否匹配成功
+        if (matched) {
+            LOG_DEBUG(sLogger, ("regex_matched", string(start, matchLength).substr(0, 100))); // 只输出前100字符便于查看
+        } else {
+            LOG_DEBUG(sLogger, ("regex_not_matched", ""));
+        }
+
+        return matched;
+    } catch (const boost::regex_error& e) {
+        exception.append("Boost regex error: ");
+        exception.append(e.what());
+        exception.append("; buffer: ");
+        exception.append(data, matchLength);
+        LOG_ERROR(sLogger, ("Boost regex error", e.what())
+                            ("buffer", string(data, matchLength).substr(0, 100)));
+        return false;
+    } catch (const std::exception& e) {
+        exception.append("Standard exception: ");
+        exception.append(e.what());
+        exception.append("; buffer: ");
+        exception.append(data, matchLength);
+        LOG_ERROR(sLogger, ("Standard exception", e.what())
+                            ("buffer", string(data, matchLength).substr(0, 100)));
+        return false;
+    } catch (...) {
+        exception.append("Unknown exception; buffer: ");
+        exception.append(data, matchLength);
+        LOG_ERROR(sLogger, ("Unknown exception", "")
+                            ("buffer", string(data, matchLength).substr(0, 100)));
+        return false;
+    }
+}
+
 uint32_t GetLittelEndianValue32(const uint8_t* buffer) {
     return buffer[3] << 24 | buffer[2] << 16 | buffer[1] << 8 | buffer[0];
 }

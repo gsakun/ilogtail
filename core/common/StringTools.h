@@ -129,8 +129,14 @@ bool BoostRegexMatch(const char* buffer,
                      boost::match_flag_type flags = boost::match_default);
 bool BoostRegexMatch(const char* buffer, size_t size, const boost::regex& reg, std::string& exception);
 bool BoostRegexMatch(const char* buffer, const boost::regex& reg, std::string& exception);
+// zk add BoostRegexSearch
 bool BoostRegexSearch(const char* buffer, size_t size, const boost::regex& reg, std::string& exception);
 bool BoostRegexSearch(const char* buffer, const boost::regex& reg, std::string& exception);
+bool BoostRegexSearchWithLimit(const char* data,
+    size_t size,
+    const boost::regex& reg,
+    std::string& exception,
+    int regexCheckLength);
 
 // GetLittelEndianValue32 converts @buffer in little endian to uint32_t.
 uint32_t GetLittelEndianValue32(const uint8_t* buffer);
