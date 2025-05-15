@@ -55,7 +55,7 @@ func (*ProcessorSplitRegex) Description() string {
 
 func headMatch(reg *regexp.Regexp, str string, length int) bool {
 	if len(str) < length {
-		return false
+		length = len(str)
 	}
 	rst := reg.FindStringSubmatchIndex(str[:length])
 	return len(rst) >= 2 && rst[0] == 0
