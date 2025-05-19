@@ -17,6 +17,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/xpressive/xpressive.hpp>
 #include "logger/Logger.h"
+#include <chrono>
 #if defined(_MSC_VER)
 #include <Shlwapi.h>
 #else
@@ -290,15 +291,29 @@ bool BoostRegexSearchWithLimit(const char* data,
     const char* start = data;
     const char* end = data + matchLength;
 
+    // 开始计时
+    auto startTime = std::chrono::high_resolution_clock::now();
+
     try {
         boost::match_results<const char*> what;
-        bool matched = boost::regex_search(start, end, what, reg, boost::match_default);
+        bool matched = boost::regex_search(start, end, what, reg);
+
+        auto endTime = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
 
         // 调试日志：输出是否匹配成功
         if (matched) {
-            LOG_DEBUG(sLogger, ("regex_matched", string(start, matchLength).substr(0, 100))); // 只输出前100字符便于查看
+            LOG_DEBUG(sLogger, 
+                ("regex_matched", string(start, matchLength).substr(0, 100)) // 只输出前100字符便于查看
+                ("match_time_ns", duration) // 输出匹配耗时（微秒）
+                ("match_length", matchLength) // 输出匹配长度
+                ("origin_length", length)); // 输出原始输入长度"))
         } else {
-            LOG_DEBUG(sLogger, ("regex_not_matched", ""));
+            LOG_DEBUG(sLogger, 
+                ("regex_not_matched", string(start, matchLength).substr(0, 100))
+                ("match_time_ns", duration) // 输出匹配耗时（微秒）
+                ("match_length", matchLength) // 输出匹配长度
+                ("origin_length", length)); // 输出原始输入长度"))
         }
 
         return matched;

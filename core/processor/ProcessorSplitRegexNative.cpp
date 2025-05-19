@@ -92,7 +92,7 @@ void ProcessorSplitRegexNative::ProcessEvent(PipelineEventGroup& logGroup,
                       ("split log lines fail", "please check log_begin_regex")("file_name", logPath)(
                           "log bytes", sourceVal.size() + 1)("first 1KB log", sourceVal.substr(0, 1024).to_string()));
         }
-        /*for (auto& discardData : discardIndex) { // warning if data loss
+        for (auto& discardData : discardIndex) { // warning if data loss
             GetContext().GetAlarm().SendAlarm(SPLIT_LOG_FAIL_ALARM,
                                               "split log lines discard data, file:" + logPath.to_string()
                                                   + ", logs:" + discardData.substr(0, 1024).to_string(),
@@ -103,7 +103,7 @@ void ProcessorSplitRegexNative::ProcessEvent(PipelineEventGroup& logGroup,
                 GetContext().GetLogger(),
                 ("split log lines discard data", "please check log_begin_regex")("file_name", logPath)(
                     "log bytes", sourceVal.size() + 1)("first 1KB log", discardData.substr(0, 1024).to_string()));
-        }*/
+        }
     }
     if (logIndex.size() == 0) {
         return;

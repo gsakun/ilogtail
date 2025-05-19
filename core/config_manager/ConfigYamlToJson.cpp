@@ -77,7 +77,7 @@ ConfigYamlToJson::ConfigYamlToJson() {
     mFileConfigMap["LogBeginRegex"] = "log_begin_reg";
     mFileConfigMap["LogContinueRegex"] = "log_continue_reg";
     mFileConfigMap["LogEndRegex"] = "log_end_reg";
-    mFileConfigMap["logRegexCheckLength"] = "log_regex_check_length";
+    mFileConfigMap["LogRegexCheckLength"] = "log_regex_check_length";
     mFileConfigMap["ReaderFlushTimeout"] = "reader_flush_timeout";
     // params specific to delimiter accelerate processor
     mFileConfigMap["Separator"] = "delimiter_separator";
@@ -640,7 +640,7 @@ bool ConfigYamlToJson::FillupDefaultUserJsonConfig(const WorkMode& workMode, Jso
                         userJsonConfig["log_begin_reg"] = splitProcessor["detail"][name];
                     }
                     if (0 == StringCaseInsensitiveCmp(name.c_str(), "SplitRegexCheckLength")) {
-                        userJsonConfig["log_begin_reg_check_length"] = splitProcessor["detail"][name];
+                        userJsonConfig["log_regex_check_length"] = splitProcessor["detail"][name];
                     }
                 }
                 if (BOOL_FLAG(enable_new_pipeline)) {
