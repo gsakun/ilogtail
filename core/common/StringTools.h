@@ -132,7 +132,7 @@ bool BoostRegexMatch(const char* buffer, const boost::regex& reg, std::string& e
 // zk add BoostRegexSearch
 bool BoostRegexSearch(const char* buffer, size_t size, const boost::regex& reg, std::string& exception);
 bool BoostRegexSearch(const char* buffer, const boost::regex& reg, std::string& exception);
-bool BoostRegexSearchWithLimit(const char* data,
+bool BoostRegexMatchWithLimit(const char* data,
     size_t size,
     const boost::regex& reg,
     std::string& exception,

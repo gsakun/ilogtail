@@ -271,13 +271,13 @@ bool BoostRegexSearch(const char* buffer, const boost::regex& reg, string& excep
     }
 }
 
-bool BoostRegexSearchWithLimit(const char* data,
+bool BoostRegexMatchWithLimit(const char* data,
                                size_t length,
                                const boost::regex& reg,
                                std::string& exception,
                                int regexCheckLength) {
     // 调试日志：打印输入参数信息
-    LOG_DEBUG(sLogger, ("BoostRegexSearchWithLimit called length", length)
+    LOG_DEBUG(sLogger, ("BoostRegexMatchWithLimit called length", length)
                           ("regex_check_length", regexCheckLength));
 
     // 计算实际匹配长度
@@ -286,8 +286,7 @@ bool BoostRegexSearchWithLimit(const char* data,
                              : length;
 
     // 调试日志：展示本次实际使用的匹配长度
-    LOG_DEBUG(sLogger, ("actual_match_length", matchLength));
-
+    LOG_DEBUG(sLogger, ("actual_match_length", matchLength));                           
     const char* start = data;
     const char* end = data + matchLength;
 
@@ -296,7 +295,7 @@ bool BoostRegexSearchWithLimit(const char* data,
 
     try {
         boost::match_results<const char*> what;
-        bool matched = boost::regex_search(start, end, what, reg);
+        bool matched = boost::regex_match(start, end, what, reg);
 
         auto endTime = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
