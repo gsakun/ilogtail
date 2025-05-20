@@ -385,6 +385,8 @@ void ProcessorSplitRegexNative::SetLogMultilinePolicy(const std::string& begReg,
     }
     if (logRegexCheckLength > 0) {
         mLogRegexCheckLength = logRegexCheckLength;
+    }else{
+        mLogRegexCheckLength = 45;
     }
 }
 
