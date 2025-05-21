@@ -89,7 +89,7 @@ void ProcessorSplitRegexNative::ProcessEvent(PipelineEventGroup& logGroup,
                                               GetContext().GetLogstoreName(),
                                               GetContext().GetRegion());
             LOG_ERROR(GetContext().GetLogger(),
-                      ("split log lines fail", "please check log_begin_regex")("file_name", logPath)(
+                      ("split log lines fail", "please check log_begin_regex")("logStoreName",GetContext().GetLogstoreName())("file_name", logPath)(
                           "log bytes", sourceVal.size() + 1)("first 1KB log", sourceVal.substr(0, 1024).to_string())("regex",mLogBeginReg)("regexCheckLength",mLogRegexCheckLength));
         }
         for (auto& discardData : discardIndex) { // warning if data loss
