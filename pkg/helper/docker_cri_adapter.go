@@ -46,6 +46,7 @@ import (
 const (
 	kubeRuntimeAPIVersion = "0.1.0"
 	maxMsgSize            = 1024 * 1024 * 16
+	defaultContainerType  = "container"
 )
 
 var (
@@ -501,7 +502,7 @@ func (cw *CRIRuntimeWrapper) containerdEventListener() {
 						breakFlag = true
 						break
 					}
-					if cType == "container" {
+					if cType == defaultContainerType {
 						logger.Debugf(context.Background(), "containerd task event create container %v", ev.ContainerID)
 						_ = cw.fetchOne(ev.ContainerID)
 					} else {
@@ -515,7 +516,7 @@ func (cw *CRIRuntimeWrapper) containerdEventListener() {
 						breakFlag = true
 						break
 					}
-					if cType == "container" {
+					if cType == defaultContainerType {
 						logger.Debugf(context.Background(), "containerd task event delete container %v", ev.ContainerID)
 						cw.dockerCenter.markRemove(ev.ContainerID)
 					} else {
@@ -532,8 +533,8 @@ func (cw *CRIRuntimeWrapper) containerdEventListener() {
 			}
 		}
 		cancel()
-		if errorCount > 10 && criRuntimeWrapper != nil {
-			logger.Info(context.Background(), "containerd listener fails and cri runtime wrapper is valid", "stop containerd listener")
+		if errorCount > 10 && dockerCenterInstance != nil {
+			logger.Info(context.Background(), "containerd listener fails and docker runtime wrapper is valid", "stop containerd listener")
 			break
 		}
 		// if always error, sleep 300 secs
