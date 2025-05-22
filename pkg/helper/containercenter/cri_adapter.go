@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/containerd/typeurl"
 	"os"
 	"path"
 	"path/filepath"
@@ -27,14 +26,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alibaba/ilogtail/pkg/flags"
-	"github.com/alibaba/ilogtail/pkg/logger"
+	"github.com/containerd/typeurl"
+
+	"runtime"
+
 	"github.com/containerd/containerd"
 	eventtypes "github.com/containerd/containerd/api/events"
 	containerdcriserver "github.com/containerd/containerd/pkg/cri/server"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"runtime"
+
+	"github.com/alibaba/ilogtail/pkg/flags"
+	"github.com/alibaba/ilogtail/pkg/logger"
 )
 
 const (
@@ -333,11 +336,10 @@ func (cw *CRIRuntimeWrapper) containerdEventListener() {
 	errorCount := 0
 	defer criRuntimeRecover()
 	timer := time.NewTimer(EventListenerTimeout)
-	var err error
 	for {
 		logger.Info(context.Background(), "containerd event listener", "start")
 		ctx, cancel := context.WithCancel(context.Background())
-		events, errors := cw.nativeClient.EventService().Subscribe(ctx, `topic~="/tasks/start|/tasks/delete"`)
+		events, clientErr := cw.nativeClient.EventService().Subscribe(ctx, `topic~="/tasks/start|/tasks/delete"`)
 		breakFlag := false
 		for !breakFlag {
 			timer.Reset(EventListenerTimeout)
@@ -358,9 +360,10 @@ func (cw *CRIRuntimeWrapper) containerdEventListener() {
 					breakFlag = true
 					break
 				}
+				var cType string
 				switch ev := evt.(type) {
 				case *eventtypes.TaskStart:
-					cType, err := cw.getContainerType(ev.ContainerID)
+					cType, err = cw.getContainerType(ev.ContainerID)
 					if err != nil {
 						logger.Errorf(context.Background(), "CONTAINERD_EVENT_ALARM", "containerd event listener error: %v", err)
 						errorCount++
@@ -374,7 +377,7 @@ func (cw *CRIRuntimeWrapper) containerdEventListener() {
 						continue
 					}
 				case *eventtypes.TaskDelete:
-					cType, err := cw.getContainerType(ev.ContainerID)
+					cType, err = cw.getContainerType(ev.ContainerID)
 					if err != nil {
 						logger.Errorf(context.Background(), "CONTAINERD_EVENT_ALARM", "containerd event listener error: %v", err)
 						errorCount++
@@ -389,7 +392,7 @@ func (cw *CRIRuntimeWrapper) containerdEventListener() {
 					}
 				default:
 				}
-			case err = <-errors:
+			case err := <-clientErr:
 				logger.Error(context.Background(), "CONTAINERD_EVENT_ALARM", "containerd event listener error", err)
 				breakFlag = true
 			case <-timer.C:
