@@ -642,6 +642,9 @@ bool ConfigYamlToJson::FillupDefaultUserJsonConfig(const WorkMode& workMode, Jso
                     if (0 == StringCaseInsensitiveCmp(name.c_str(), "SplitRegexCheckLength")) {
                         userJsonConfig["log_regex_check_length"] = splitProcessor["detail"][name];
                     }
+                    if (0 == StringCaseInsensitiveCmp(name.c_str(), "DiscardUnmatch")){
+                        userJsonConfig["discard_unmatch"] = splitProcessor["detail"][name].as<bool>();
+                    }
                 }
                 if (BOOL_FLAG(enable_new_pipeline)) {
                     Json::Value removed;

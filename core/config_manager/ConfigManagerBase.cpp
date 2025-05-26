@@ -412,7 +412,7 @@ void ConfigManagerBase::LoadSingleUserConfig(const std::string& logName, const J
             if (!CheckLogType(logTypeStr, logType)) {
                 throw ExceptionBase(std::string("The logType is invalid : ") + logTypeStr);
             }
-            bool discardUnmatch = GetBoolValue(value, "discard_unmatch", true);
+            bool discardUnmatch = GetBoolValue(value, "discard_unmatch", false);
 
             // this field is for ant
             // all configuration are included in "customized" field
